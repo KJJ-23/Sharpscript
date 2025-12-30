@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SharpScript Audio v2</title>
+
+<!-- iPhone App Icon -->
+<link rel="apple-touch-icon" href="sharpscript-logo.png">
+
+<style>
+:root{
+  --bg:#0b0f14;
+  --panel:#0f172a;
+  --gold:#d4af37;
+  --gold-soft:#b8962e;
+  --green:#16a34a;
+  --green-bright:#22c55e;
+  --text:#e5e7eb;
+  --muted:#9ca3af;
+  --danger:#ef4444;
+}
+
+body{
+  margin:0;
+  padding:16px;
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+}
+
+.header{
+  display:flex;
+  gap:14px;
+  align-items:center;
+  margin-bottom:14px;
+}
+
+.header img{
+  width:48px;
+  height:48px;
+  object-fit:contain;
+  filter:drop-shadow(0 0 6px rgba(212,175,55,.35));
+}
+
+.header h1{
+  margin:0;
+  font-size:20px;
+  color:var(--gold);
+}
+
+.header p{
+  margin:2px 0 0;
+  font-size:13px;
+  color:var(--muted);
+}
+
+.badge{
+  display:inline-block;
+  padding:6px 12px;
+  border-radius:999px;
+  font-size:12px;
+  margin-bottom:10px;
+  background:rgba(212,175,55,.15);
+  color:var(--gold);
+  border:1px solid rgba(212,175,55,.35);
+}
+
+textarea{
+  width:100%;
+  height:260px;
+  background:var(--panel);
+  color:var(--text);
+  border:1px solid rgba(212,175,55,.25);
+  border-radius:10px;
+  padding:12px;
+  font-size:16px;
+  box-sizing:border-box;
+}
+
+textarea:focus{
+  outline:none;
+  border-color:var(--gold);
+}
+
+.row{
+  display:flex;
+  gap:10px;
+  margin-top:12px;
+}
+
+button,select{
+  flex:1;
+  padding:12px;
+  border-radius:10px;
+  font-size:15px;
+  border:none;
+  box-sizing:border-box;
+}
+
+button{
+  background:linear-gradient(135deg,var(--green-bright),var(--green));
+  color:#041007;
+  font-weight:700;
+}
+
+button.secondary{
+  background:var(--panel);
+  color:var(--text);
+}
+
+button.gold{
+  background:linear-gradient(135deg,var(--gold),var(--gold-soft));
+  color:#1a1204;
+}
+
+button.danger{
+  background:var(--danger);
+  color:white;
+}
+
+select{
+  background:var(--panel);
+  color:var(--text);
+  border:1px solid rgba(212,175,55,.35);
+}
+
+body::after{
+  content:"SharpScript";
+  position:fixed;
+  bottom:10px;
+  right:12px;
+  font-size:11px;
+  color:var(--gold-soft);
+  opacity:.15;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <img src="sharpscript-logo.png" alt="SharpScript Logo">
+  <div>
+    <h1>SharpScript Audio</h1>
+    <p>Deep Research · Read Aloud</p>
+  </div>
+</div>
+
+<div id="mode" class="badge">FULL REPORT MODE</div>
+
+<textarea id="textInput" placeholder="Paste SharpScript Deep Research here..."></textarea>
+
+<div class="row">
+  <select id="speed">
+    <option value="0.8">Slow (numbers)</option>
+    <option value="1" selected>Normal</option>
+    <option value="1.15">Fast (recap)</option>
+  </select>
+  <select id="voice"></select>
+</div>
+
+<div class="row">
+  <button onclick="playFull()">▶ Full Report</button>
+  <button class="gold" onclick="playTop()">🔥 Top Plays</button>
+</div>
+
+<div class="row">
+  <button class="secondary" onclick="playBrief()">🌅 Morning Brief</button>
+  <button class="secondary" onclick="pause()">⏸ Pause</button>
+</div>
+
+<div class="row">
+  <button class="secondary" onclick="resume()">⏵ Resume</button>
+  <button class="secondary" onclick="clearText()">🧼 Clear</button>
+  <button class="danger" onclick="stop()">⏹ Stop</button>
+</div>
+
+<script>
+const voiceSelect=document.getElementById("voice");
+const mode=document.getElementById("mode");
+
+function loadVoices(){
+  const voices=speechSynthesis.getVoices();
+  voiceSelect.innerHTML="";
+  voices.forEach((v,i)=>{
+    const o=document.createElement("option");
+    o.value=i;
+    o.textContent=`${v.name} (${v.lang})`;
+    voiceSelect.appendChild(o);
+  });
+  const en=voices.findIndex(v=>v.lang.startsWith("en"));
+  if(en>=0)voiceSelect.value=en;
+}
+speechSynthesis.onvoiceschanged=loadVoices;
+loadVoices();
+
+function speak(text){
+  if(!text.trim())return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  const baseRate=parseFloat(speed.value);
+  u.rate=/\d|\+|%/.test(text)?baseRate-0.1:baseRate;
+  const voices=speechSynthesis.getVoices();
+  if(voices[voiceSelect.value])u.voice=voices[voiceSelect.value];
+  speechSynthesis.speak(u);
+}
+
+function playFull(){
+  mode.innerText="FULL REPORT MODE";
+  speak(textInput.value);
+}
+
+function playTop(){
+  mode.innerText="🔥 TOP PLAYS MODE";
+  const t=textInput.value.split("\n").filter(l=>
+    /TOP PLAY|9\+|MAIN CARD/i.test(l)
+  ).join(". ");
+  speak(t||"No top plays detected.");
+}
+
+function playBrief(){
+  mode.innerText="🌅 MORNING BRIEF";
+  const t=textInput.value.split("\n").filter(l=>
+    /EDGE|LINE|CONFIDENCE 9|TOP PLAY/i.test(l)
+  ).join(". ");
+  speak(t||"No morning brief items found.");
+}
+
+function pause(){speechSynthesis.pause();}
+function resume(){speechSynthesis.resume();}
+function stop(){speechSynthesis.cancel();}
+
+function clearText(){
+  document.getElementById("textInput").value="";
+  mode.innerText="FULL REPORT MODE";
+  speechSynthesis.cancel();
+}
+</script>
+
+</body>
+</html>
+
